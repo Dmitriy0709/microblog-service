@@ -4,7 +4,7 @@ import os
 
 from fastapi.testclient import TestClient
 
-# Тестовая БД (sqlite)
+# Тестовая БД (sqlite3)
 os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 
 from app.database import SessionLocal, engine  # noqa: E402
