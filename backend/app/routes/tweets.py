@@ -44,11 +44,11 @@ def like_tweet(
     return {"status": "liked"}
 
 
-@router.get("", response_model=schemas.TweetsResponse)
+@router.get("", response_model=schemas.FeedResponse)
 def get_feed(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
-) -> schemas.TweetsResponse:
+) -> schemas.FeedResponse:
     """
     Лента: показываем твиты только от тех, кого пользователь фоловит.
     """
@@ -60,7 +60,7 @@ def get_feed(
         .all()
     )
 
-    return schemas.TweetsResponse(
+    return schemas.FeedResponse(
         tweets=[
             schemas.TweetOut(
                 id=t.id,
