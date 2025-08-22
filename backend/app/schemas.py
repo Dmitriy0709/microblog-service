@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 from pydantic import BaseModel
 
 
@@ -22,9 +22,9 @@ class MediaUploadIn(BaseModel):
     filename: str
 
 
-class MediaUploadOut(BaseModel):
+class MediaCreated(BaseModel):
     media_id: int
-    upload_url: str
+    url: str  # может быть upload_url или готовый путь
 
 
 # ---------- Tweets ----------
