@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 import app.schemas as schemas
 import app.models as models
-from app.database import get_db
+from app.deps import get_db  # ✅ исправлено
 from app.deps import get_current_user
 from app.utils import media_public_url
 
@@ -24,7 +24,6 @@ def create_tweet(
     db.add(new_tweet)
     db.flush()
 
-    # прикрепляем медиа, если есть
     if tweet.tweet_media_ids:
         medias = (
             db.query(models.Media)
@@ -49,7 +48,6 @@ def like_tweet(
     if not tweet:
         raise HTTPException(status_code=404, detail="Tweet not found")
 
-    # проверим, что лайк не дублируется
     exists = (
         db.query(models.Like)
         .filter_by(tweet_id=tweet_id, user_id=user.id)
@@ -69,14 +67,12 @@ def get_feed(
     user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # на кого подписан текущий пользователь
     followees = (
         db.query(models.Follow.followee_id)
         .filter(models.Follow.follower_id == user.id)
         .subquery()
     )
 
-    # только твиты followees, не свои
     tweets = (
         db.query(models.Tweet)
         .filter(models.Tweet.user_id.in_(followees))
