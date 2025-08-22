@@ -1,0 +1,40 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: microblog
+      POSTGRES_USER: microblog
+      POSTGRES_PASSWORD: microblog
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "microblog"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://microblog:microblog@db:5432/microblog
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend/app/media_storage:/app/app/media_storage
+    ports:
+      - "8000:8000"
+
+  frontend:
+    image: nginx:alpine
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./backend/app/media_storage:/media:ro   # вот так, монтируем в /media
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
