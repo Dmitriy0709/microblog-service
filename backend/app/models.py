@@ -6,10 +6,10 @@ from typing import List
 from sqlalchemy import (
     String,
     Text,
+    Integer,
     ForeignKey,
     DateTime,
     UniqueConstraint,
-    Integer,
 )
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -19,66 +19,102 @@ from sqlalchemy.orm import (
 )
 
 
+# === Базовый класс декларативной модели ===
 class Base(DeclarativeBase):
     pass
 
 
+# === Пользователи ===
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
-    api_key: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    api_key: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
 
-    tweets: Mapped[List[Tweet]] = relationship("Tweet", back_populates="author")
-    likes: Mapped[List[Like]] = relationship("Like", back_populates="user")
-    followers: Mapped[List[Follow]] = relationship(
-        "Follow", back_populates="followee", foreign_keys="Follow.followee_id"
+    tweets: Mapped[List["Tweet"]] = relationship(
+        back_populates="author", cascade="all, delete-orphan"
     )
-    following: Mapped[List[Follow]] = relationship(
-        "Follow", back_populates="follower", foreign_keys="Follow.follower_id"
+    likes: Mapped[List["Like"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    following: Mapped[List["Follow"]] = relationship(
+        back_populates="follower",
+        foreign_keys="Follow.follower_id",
+        cascade="all, delete-orphan",
+    )
+    followers: Mapped[List["Follow"]] = relationship(
+        back_populates="followee",
+        foreign_keys="Follow.followee_id",
+        cascade="all, delete-orphan",
     )
 
 
+# === Твиты ===
 class Tweet(Base):
     __tablename__ = "tweets"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
 
-    author: Mapped[User] = relationship("User", back_populates="tweets")
-    likes: Mapped[List[Like]] = relationship("Like", back_populates="tweet")
-    medias: Mapped[List[Media]] = relationship("Media", back_populates="tweet")
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    author: Mapped["User"] = relationship(back_populates="tweets")
+
+    likes: Mapped[List["Like"]] = relationship(
+        back_populates="tweet", cascade="all, delete-orphan"
+    )
+    medias: Mapped[List["Media"]] = relationship(
+        back_populates="tweet", cascade="all, delete-orphan"
+    )
 
 
+# === Медиа ===
 class Media(Base):
     __tablename__ = "medias"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    stored_path: Mapped[str] = mapped_column(String(200), nullable=False)
-    tweet_id: Mapped[int] = mapped_column(ForeignKey("tweets.id"))
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    stored_path: Mapped[str] = mapped_column(String, nullable=False)
 
-    tweet: Mapped[Tweet] = relationship("Tweet", back_populates="medias")
+    tweet_id: Mapped[int] = mapped_column(ForeignKey("tweets.id", ondelete="CASCADE"))
+    tweet: Mapped["Tweet"] = relationship(back_populates="medias")
 
 
+# === Лайки ===
 class Like(Base):
     __tablename__ = "likes"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    tweet_id: Mapped[int] = mapped_column(ForeignKey("tweets.id"))
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
-    user: Mapped[User] = relationship("User", back_populates="likes")
-    tweet: Mapped[Tweet] = relationship("Tweet", back_populates="likes")
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    tweet_id: Mapped[int] = mapped_column(ForeignKey("tweets.id", ondelete="CASCADE"))
 
-    __table_args__ = (UniqueConstraint("user_id", "tweet_id", name="uq_user_tweet"),)
+    user: Mapped["User"] = relationship(back_populates="likes")
+    tweet: Mapped["Tweet"] = relationship(back_populates="likes")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "tweet_id", name="uq_like_user_tweet"),
+    )
 
 
+# === Подписки ===
 class Follow(Base):
     __tablename__ = "follows"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    follower_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    followee_id: Mapped[int] = mapped_column
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+
+    follower_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    followee_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+
+    follower: Mapped["User"] = relationship(
+        back_populates="following", foreign_keys=[follower_id]
+    )
+    followee: Mapped["User"] = relationship(
+        back_populates="followers", foreign_keys=[followee_id]
+    )
+
+    __table_args__ = (
+        UniqueConstraint("follower_id", "followee_id", name="uq_follows_pair"),
+    )
