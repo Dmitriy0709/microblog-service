@@ -1,27 +1,41 @@
 from __future__ import annotations
 
-from typing import List
-from pydantic import BaseModel, Field
+from datetime import datetime
+from typing import List, Optional
+from pydantic import BaseModel
 
 
-# ---------- Базовые ----------
+# ---------- Users ----------
 
-class Result(BaseModel):
-    result: bool = True
+class UserCreate(BaseModel):
+    name: str
 
 
-# ---------- Media ----------
+class UserOut(BaseModel):
+    id: int
+    name: str
 
-class MediaCreated(BaseModel):
+
+# ---------- Medias ----------
+
+class MediaUploadIn(BaseModel):
+    filename: str
+
+
+class MediaUploadOut(BaseModel):
     media_id: int
-    url: str
+    upload_url: str
 
 
 # ---------- Tweets ----------
 
-class TweetCreate(BaseModel):
-    tweet_data: str = Field(..., min_length=1, max_length=280)
-    tweet_media_ids: List[int] = []
+class TweetCreateIn(BaseModel):
+    tweet_data: str
+    tweet_media_ids: List[int]
+
+
+class TweetCreateOut(BaseModel):
+    tweet_id: int
 
 
 class TweetAuthor(BaseModel):
@@ -37,35 +51,17 @@ class TweetLike(BaseModel):
 class TweetOut(BaseModel):
     id: int
     content: str
-    created_at: str
+    created_at: datetime
+    attachments: List[str]
     author: TweetAuthor
     likes: List[TweetLike]
-    attachments: List[str]
 
 
-class TweetCreated(BaseModel):
-    tweet_id: int
-
-
-class TweetsResponse(BaseModel):
-    result: bool = True
+class TweetFeed(BaseModel):
     tweets: List[TweetOut]
 
 
-# ---------- Users ----------
+# ---------- Generic ----------
 
-class UserShort(BaseModel):
-    id: int
-    name: str
-
-
-class UserProfile(BaseModel):
-    id: int
-    name: str
-    followers: List[UserShort]
-    following: List[UserShort]
-
-
-class UserMeResponse(BaseModel):
-    result: bool = True
-    user: UserProfile
+class OK(BaseModel):
+    ok: bool
