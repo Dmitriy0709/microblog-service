@@ -1,49 +1,48 @@
-from __future__ import annotations
-
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 
 # ---------- Users ----------
-
-class UserCreate(BaseModel):
-    name: str
-
-
-class UserOut(BaseModel):
+class UserBase(BaseModel):
     id: int
     name: str
 
 
-# ---------- Medias ----------
+class UserOut(UserBase):
+    pass
 
-class MediaUploadIn(BaseModel):
-    filename: str
+
+class UserMeResponse(BaseModel):
+    id: int
+    name: str
+    api_key: str
+
+
+# ---------- Media ----------
+class MediaCreate(BaseModel):
+    media_url: str
 
 
 class MediaCreated(BaseModel):
-    media_id: int
-    url: str  # может быть upload_url или готовый путь
+    id: int
+    media_url: str
 
 
 # ---------- Tweets ----------
+class TweetBase(BaseModel):
+    content: str
 
-class TweetCreateIn(BaseModel):
-    tweet_data: str
-    tweet_media_ids: List[int]
+
+class TweetCreate(TweetBase):
+    tweet_media_ids: List[int] = []
 
 
 class TweetCreateOut(BaseModel):
     tweet_id: int
 
 
-class TweetAuthor(BaseModel):
-    id: int
-    name: str
-
-
-class TweetLike(BaseModel):
+class LikeOut(BaseModel):
     user_id: int
     name: str
 
@@ -52,16 +51,10 @@ class TweetOut(BaseModel):
     id: int
     content: str
     created_at: datetime
-    attachments: List[str]
-    author: TweetAuthor
-    likes: List[TweetLike]
+    author: UserOut
+    attachments: List[MediaCreated] = []
+    likes: List[LikeOut] = []
 
 
-class TweetFeed(BaseModel):
+class FeedResponse(BaseModel):
     tweets: List[TweetOut]
-
-
-# ---------- Generic ----------
-
-class OK(BaseModel):
-    ok: bool
