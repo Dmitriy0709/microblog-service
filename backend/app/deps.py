@@ -7,7 +7,7 @@ from app import models
 
 def get_current_user(
     db: Session = Depends(get_db),
-    x_api_key: str = Header(alias="X-API-Key")
+    x_api_key: str = Header(..., alias="X-API-Key"),
 ):
     user = db.query(models.User).filter(models.User.api_key == x_api_key).first()
     if not user:

@@ -1,25 +1,39 @@
 from __future__ import annotations
+
+import secrets
 from pathlib import Path
+from typing import Final
+
 from fastapi import UploadFile
 
-MEDIA_ROOT = Path(__file__).parent / "media_storage"
-MEDIA_ROOT.mkdir(exist_ok=True)
+# Директория для хранения загруженных файлов
+UPLOAD_DIR: Final[Path] = Path("uploads")
 
 
-def save_upload(file: UploadFile, user_id: str | int | None) -> str:
-    """Сохраняет загруженный файл и возвращает путь."""
-    suffix = Path(file.filename).suffix if file.filename else ""
-    if user_id is not None:
-        filename = f"{user_id}_{file.filename}"
-    else:
-        filename = file.filename or "upload" + suffix
+def save_upload_file(file: UploadFile) -> str:
+    """
+    Сохраняет загруженный файл на диск и возвращает относительный путь,
+    который пишем в БД в Media.stored_path.
+    """
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-    stored_path = MEDIA_ROOT / filename
-    with stored_path.open("wb") as f:
-        f.write(file.file.read())
+    # Безопасное имя: случайный префикс + исходное расширение
+    suffix = Path(file.filename or "").suffix
+    safe_name = f"{secrets.token_hex(16)}{suffix}"
+    stored_path = UPLOAD_DIR / safe_name
+
+    with stored_path.open("wb") as out:
+        # У UploadFile.file — файловый-like объект
+        out.write(file.file.read())
+
+    # Храним относительный путь (строкой)
     return str(stored_path)
 
 
-def media_public_url(path: str) -> str:
-    """Формирует публичный URL для сохранённого файла."""
-    return f"/media/{Path(path).name}"
+def media_public_url(stored_path: str) -> str:
+    """
+    Преобразует путь, сохранённый в БД, в публичный URL для клиента.
+    Здесь делаем простой вариант вида /media/<filename>.
+    """
+    name = Path(stored_path).name
+    return f"/media/{name}"

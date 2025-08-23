@@ -20,7 +20,6 @@ def create_tweet(
     db.commit()
     db.refresh(db_tweet)
 
-    # привязать медиа, если есть
     if tweet.tweet_media_ids:
         medias = (
             db.query(models.Media)
@@ -63,7 +62,6 @@ def get_feed(
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
-    # получить id тех, кого юзер фоловит
     followees = [
         f.followee_id for f in db.query(models.Follow).filter_by(follower_id=user.id).all()
     ]
