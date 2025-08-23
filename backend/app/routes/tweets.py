@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 
-from app import models, schemas, utils
-from app.deps import get_db, get_current_user
+from app import models, schemas, deps
+from app.database import get_db
 
 router = APIRouter(prefix="/api/tweets", tags=["tweets"])
 
@@ -12,14 +12,20 @@ router = APIRouter(prefix="/api/tweets", tags=["tweets"])
 def create_tweet(
     tweet: schemas.TweetCreate,
     db: Session = Depends(get_db),
-    user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(deps.get_current_user),
 ):
-    db_tweet = models.Tweet(content=tweet.tweet_data, author_id=user.id)
+    """
+    Создание нового твита.
+    """
+    db_tweet = models.Tweet(
+        content=tweet.tweet_data,
+        author_id=current_user.id,
+    )
     db.add(db_tweet)
     db.commit()
     db.refresh(db_tweet)
 
-    # Медиафайлы, если есть
+    # вложения (медиа)
     if tweet.tweet_media_ids:
         medias = (
             db.query(models.Media)
@@ -37,35 +43,43 @@ def create_tweet(
 def like_tweet(
     tweet_id: int,
     db: Session = Depends(get_db),
-    user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(deps.get_current_user),
 ):
+    """
+    Лайкнуть твит.
+    """
     tweet = db.query(models.Tweet).filter(models.Tweet.id == tweet_id).first()
     if not tweet:
         raise HTTPException(status_code=404, detail="Tweet not found")
 
+    # проверка, что лайка ещё нет
     existing_like = (
         db.query(models.Like)
-        .filter(models.Like.tweet_id == tweet_id, models.Like.user_id == user.id)
+        .filter(models.Like.tweet_id == tweet_id, models.Like.user_id == current_user.id)
         .first()
     )
-    if existing_like:
-        return {"status": "already liked"}
+    if not existing_like:
+        like = models.Like(user_id=current_user.id, tweet_id=tweet_id)
+        db.add(like)
+        db.commit()
 
-    like = models.Like(tweet_id=tweet_id, user_id=user.id)
-    db.add(like)
-    db.commit()
-    return {"status": "liked"}
+    return {"status": "ok"}
 
 
 @router.get("", response_model=schemas.FeedResponse)
 def get_feed(
     db: Session = Depends(get_db),
-    user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(deps.get_current_user),
 ):
-    # Получаем твиты только от тех, на кого подписан текущий пользователь
-    followees = db.query(models.Follow.followee_id).filter(
-        models.Follow.follower_id == user.id
+    """
+    Лента текущего пользователя: твиты только от тех, на кого он подписан.
+    """
+    followees = (
+        db.query(models.Follow.followee_id)
+        .filter(models.Follow.follower_id == current_user.id)
+        .subquery()
     )
+
     tweets = (
         db.query(models.Tweet)
         .filter(models.Tweet.author_id.in_(followees))
@@ -73,19 +87,4 @@ def get_feed(
         .all()
     )
 
-    return {
-        "tweets": [
-            schemas.TweetOut(
-                id=t.id,
-                content=t.content,
-                created_at=t.created_at,
-                attachments=[utils.media_public_url(m.stored_path) for m in t.medias],
-                author=schemas.TweetAuthor(id=t.author.id, name=t.author.name),
-                likes=[
-                    schemas.TweetLike(user_id=l.user_id, name=l.user.name)
-                    for l in t.likes
-                ],
-            )
-            for t in tweets
-        ]
-    }
+    return {"tweets": tweets}

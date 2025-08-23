@@ -1,9 +1,10 @@
-from pydantic import BaseModel
 from datetime import datetime
-from typing import List
+from typing import List, Optional
+from pydantic import BaseModel
 
 
-# -------- USERS --------
+# ---------- Users ----------
+
 class UserBase(BaseModel):
     id: int
     name: str
@@ -12,41 +13,42 @@ class UserBase(BaseModel):
         orm_mode = True
 
 
-class UserMeResponse(BaseModel):
+class UserMeResponse(UserBase):
+    api_key: str
+
+
+# ---------- Medias ----------
+
+class MediaCreated(BaseModel):
     id: int
-    name: str
+    url: str
 
     class Config:
         orm_mode = True
 
 
-# -------- TWEETS --------
-class TweetAuthor(BaseModel):
-    id: int
-    name: str
-
-    class Config:
-        orm_mode = True
-
-
-class TweetLike(BaseModel):
-    user_id: int
-    name: str
-
-    class Config:
-        orm_mode = True
-
+# ---------- Tweets ----------
 
 class TweetCreate(BaseModel):
     tweet_data: str
-    tweet_media_ids: List[int] = []
+    tweet_media_ids: List[int]
 
 
 class TweetCreateOut(BaseModel):
     tweet_id: int
 
 
-class TweetOut(BaseModel):
+class TweetLike(BaseModel):
+    user_id: int
+    name: str
+
+
+class TweetAuthor(BaseModel):
+    id: int
+    name: str
+
+
+class TweetResponse(BaseModel):
     id: int
     content: str
     created_at: datetime
@@ -59,9 +61,4 @@ class TweetOut(BaseModel):
 
 
 class FeedResponse(BaseModel):
-    tweets: List[TweetOut]
-
-
-# -------- MEDIAS --------
-class MediaCreated(BaseModel):
-    media_id: int
+    tweets: List[TweetResponse]
