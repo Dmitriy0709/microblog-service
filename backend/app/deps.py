@@ -1,27 +1,26 @@
-from __future__ import annotations
-
-from fastapi import Depends, Header, HTTPException, status
+from typing import Generator
 from sqlalchemy.orm import Session
 
-from . import models
-from .database import SessionLocal
+from app.database import SessionLocal
+from app import models
+from fastapi import Depends, Header, HTTPException
 
-API_KEY_HEADER = "api-key"
 
-def get_db():
+# Dependency для БД
+def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
+
+# Dependency для текущего пользователя
 def get_current_user(
-    api_key: str | None = Header(default=None, alias=API_KEY_HEADER),
+    x_api_key: str = Header(..., alias="X-API-Key"),
     db: Session = Depends(get_db),
 ) -> models.User:
-    if not api_key:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing api-key header")
-    user = db.query(models.User).filter(models.User.api_key == api_key).first()
+    user = db.query(models.User).filter(models.User.api_key == x_api_key).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid api-key")
+        raise HTTPException(status_code=401, detail="Invalid API Key")
     return user
