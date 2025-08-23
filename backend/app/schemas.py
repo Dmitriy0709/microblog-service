@@ -1,41 +1,29 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
-# ---------- Users ----------
-
-class UserBase(BaseModel):
-    id: int
-    name: str
-
-    class Config:
-        orm_mode = True
-
-
-class UserMeResponse(UserBase):
-    api_key: str
-
-
-# ---------- Medias ----------
-
+# ==== Media ====
 class MediaCreated(BaseModel):
-    id: int
-    url: str
-
-    class Config:
-        orm_mode = True
+    media_id: int
 
 
-# ---------- Tweets ----------
-
+# ==== Tweets: create ====
 class TweetCreate(BaseModel):
-    tweet_data: str
-    tweet_media_ids: List[int]
+    # тесты шлют поле "tweet_data"
+    tweet_data: str = Field(..., min_length=1)
+    tweet_media_ids: list[int] = []
 
 
 class TweetCreateOut(BaseModel):
     tweet_id: int
+
+
+# ==== Tweets: feed ====
+class TweetAuthor(BaseModel):
+    id: int
+    name: str
 
 
 class TweetLike(BaseModel):
@@ -43,22 +31,26 @@ class TweetLike(BaseModel):
     name: str
 
 
-class TweetAuthor(BaseModel):
-    id: int
-    name: str
-
-
-class TweetResponse(BaseModel):
+class TweetOut(BaseModel):
     id: int
     content: str
     created_at: datetime
-    attachments: List[str]
+    attachments: list[str]
     author: TweetAuthor
-    likes: List[TweetLike]
-
-    class Config:
-        orm_mode = True
+    likes: list[TweetLike] = []
 
 
 class FeedResponse(BaseModel):
-    tweets: List[TweetResponse]
+    tweets: list[TweetOut]
+
+
+# ==== Likes ====
+class LikeResponse(BaseModel):
+    tweet_id: int
+    user_id: int
+
+
+# ==== Users ====
+class UserMeResponse(BaseModel):
+    id: int
+    name: str

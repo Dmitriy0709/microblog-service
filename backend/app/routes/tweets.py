@@ -62,8 +62,10 @@ def get_feed(
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
+    # показываем ленту только по тем, на кого подписан текущий пользователь
     followees = [
-        f.followee_id for f in db.query(models.Follow).filter_by(follower_id=user.id).all()
+        f.followee_id
+        for f in db.query(models.Follow).filter_by(follower_id=user.id).all()
     ]
 
     if not followees:
@@ -85,7 +87,8 @@ def get_feed(
                 attachments=[media_public_url(m.stored_path) for m in t.medias],
                 author=schemas.TweetAuthor(id=t.author.id, name=t.author.name),
                 likes=[
-                    schemas.TweetLike(user_id=l.user_id, name=l.user.name) for l in t.likes
+                    schemas.TweetLike(user_id=l.user_id, name=l.user.name)
+                    for l in t.likes
                 ],
             )
             for t in tweets
