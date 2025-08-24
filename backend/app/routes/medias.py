@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, HTTPException
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -11,13 +11,19 @@ router = APIRouter(prefix="/api/medias", tags=["medias"])
 
 @router.post("", response_model=schemas.MediaCreated)
 async def upload_media(
-    file: UploadFile = File(...),
+    file: UploadFile,
     db: Session = Depends(get_db),
-    user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
 ):
-    stored_path = save_upload_file(file)
-    media = models.Media(stored_path=stored_path, user_id=user.id)
+    """Загрузка файла"""
+    try:
+        file_url = await save_upload_file(file)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Failed to save file")
+
+    media = models.Media(url=file_url, owner_id=current_user.id)
     db.add(media)
     db.commit()
     db.refresh(media)
-    return {"media_id": media.id}
+
+    return {"media_id": media.id, "url": media.url}

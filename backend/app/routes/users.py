@@ -11,6 +11,7 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 @router.get("/me", response_model=schemas.UserMeResponse)
 def get_me(
     db: Session = Depends(get_db),
-    user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
 ):
-    return {"id": user.id, "name": user.name, "api_key": user.api_key}
+    """Вернуть данные текущего пользователя"""
+    return current_user

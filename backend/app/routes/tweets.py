@@ -1,10 +1,11 @@
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.database import get_db
 from app.deps import get_current_user
-from app.utils import media_public_url
 
 router = APIRouter(prefix="/api/tweets", tags=["tweets"])
 
@@ -13,9 +14,13 @@ router = APIRouter(prefix="/api/tweets", tags=["tweets"])
 def create_tweet(
     tweet: schemas.TweetCreate,
     db: Session = Depends(get_db),
-    user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
 ):
-    db_tweet = models.Tweet(content=tweet.tweet_data, author_id=user.id)
+    """Создать новый твит"""
+    db_tweet = models.Tweet(
+        content=tweet.tweet_data,
+        author_id=current_user.id,
+    )
     db.add(db_tweet)
     db.commit()
     db.refresh(db_tweet)
@@ -26,8 +31,7 @@ def create_tweet(
             .filter(models.Media.id.in_(tweet.tweet_media_ids))
             .all()
         )
-        for m in medias:
-            m.tweet_id = db_tweet.id
+        db_tweet.medias.extend(medias)
         db.commit()
 
     return {"tweet_id": db_tweet.id}
@@ -37,60 +41,61 @@ def create_tweet(
 def like_tweet(
     tweet_id: int,
     db: Session = Depends(get_db),
-    user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
 ):
-    db_tweet = db.query(models.Tweet).filter(models.Tweet.id == tweet_id).first()
-    if not db_tweet:
+    """Поставить лайк на твит"""
+    tweet = db.query(models.Tweet).filter(models.Tweet.id == tweet_id).first()
+    if not tweet:
         raise HTTPException(status_code=404, detail="Tweet not found")
 
-    existing = (
+    like = (
         db.query(models.Like)
-        .filter(models.Like.tweet_id == tweet_id, models.Like.user_id == user.id)
+        .filter(models.Like.tweet_id == tweet_id, models.Like.user_id == current_user.id)
         .first()
     )
-    if existing:
-        return {"tweet_id": tweet_id, "user_id": user.id}
+    if like:
+        return {"user_id": current_user.id, "name": current_user.name}
 
-    like = models.Like(tweet_id=tweet_id, user_id=user.id)
+    like = models.Like(user_id=current_user.id, tweet_id=tweet_id)
     db.add(like)
     db.commit()
-    return {"tweet_id": tweet_id, "user_id": user.id}
+    return {"user_id": current_user.id, "name": current_user.name}
 
 
 @router.get("", response_model=schemas.FeedResponse)
 def get_feed(
     db: Session = Depends(get_db),
-    user: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
 ):
-    # показываем ленту только по тем, на кого подписан текущий пользователь
-    followees = [
-        f.followee_id
-        for f in db.query(models.Follow).filter_by(follower_id=user.id).all()
-    ]
+    """Получить ленту текущего пользователя"""
+    followees = (
+        db.query(models.Follow.followee_id)
+        .filter(models.Follow.follower_id == current_user.id)
+        .all()
+    )
+    followee_ids = [f[0] for f in followees]
 
-    if not followees:
+    if not followee_ids:
         return {"tweets": []}
 
     tweets = (
         db.query(models.Tweet)
-        .filter(models.Tweet.author_id.in_(followees))
+        .filter(models.Tweet.author_id.in_(followee_ids))
         .order_by(models.Tweet.created_at.desc())
         .all()
     )
 
-    return {
-        "tweets": [
+    feed: List[schemas.TweetOut] = []
+    for t in tweets:
+        feed.append(
             schemas.TweetOut(
                 id=t.id,
                 content=t.content,
                 created_at=t.created_at,
-                attachments=[media_public_url(m.stored_path) for m in t.medias],
-                author=schemas.TweetAuthor(id=t.author.id, name=t.author.name),
-                likes=[
-                    schemas.TweetLike(user_id=l.user_id, name=l.user.name)
-                    for l in t.likes
-                ],
+                author={"id": t.author.id, "name": t.author.name},
+                attachments=[m.url for m in t.medias],
+                likes=[{"user_id": l.user.id, "name": l.user.name} for l in t.likes],
             )
-            for t in tweets
-        ]
-    }
+        )
+
+    return {"tweets": feed}

@@ -1,39 +1,13 @@
-from __future__ import annotations
-
-import secrets
-from pathlib import Path
-from typing import Final
-
+import os
+import shutil
 from fastapi import UploadFile
 
-# Директория для хранения загруженных файлов
-UPLOAD_DIR: Final[Path] = Path("uploads")
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-def save_upload_file(file: UploadFile) -> str:
-    """
-    Сохраняет загруженный файл на диск и возвращает относительный путь,
-    который пишем в БД в Media.stored_path.
-    """
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Безопасное имя: случайный префикс + исходное расширение
-    suffix = Path(file.filename or "").suffix
-    safe_name = f"{secrets.token_hex(16)}{suffix}"
-    stored_path = UPLOAD_DIR / safe_name
-
-    with stored_path.open("wb") as out:
-        # У UploadFile.file — файловый-like объект
-        out.write(file.file.read())
-
-    # Храним относительный путь (строкой)
-    return str(stored_path)
-
-
-def media_public_url(stored_path: str) -> str:
-    """
-    Преобразует путь, сохранённый в БД, в публичный URL для клиента.
-    Здесь делаем простой вариант вида /media/<filename>.
-    """
-    name = Path(stored_path).name
-    return f"/media/{name}"
+async def save_upload_file(upload_file: UploadFile) -> str:
+    file_location = os.path.join(UPLOAD_DIR, upload_file.filename)
+    with open(file_location, "wb") as buffer:
+        shutil.copyfileobj(upload_file.file, buffer)
+    return f"/{file_location}"

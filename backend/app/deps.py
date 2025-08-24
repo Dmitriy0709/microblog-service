@@ -1,13 +1,12 @@
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
-from app.database import get_db
 from app import models
+from app.database import get_db
 
 
 def get_current_user(
-    db: Session = Depends(get_db),
-    x_api_key: str = Header(..., alias="X-API-Key"),
+    db: Session = Depends(get_db), x_api_key: str = Header(..., alias="X-API-Key")
 ):
     user = db.query(models.User).filter(models.User.api_key == x_api_key).first()
     if not user:
