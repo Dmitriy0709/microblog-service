@@ -1,12 +1,33 @@
 import pytest
 from fastapi.testclient import TestClient
-
 from app.main import app
+from app.database import SessionLocal
+from app import models
 
 client = TestClient(app)
 
-# Заголовки с API-ключом для Alice (добавляется при инициализации БД)
+# фиктивные ключи, должны совпадать с тем, что мы создаём в БД (например, в CI миграциях)
 HEADERS = {"X-API-Key": "key-alice"}
+
+
+@pytest.fixture(autouse=True)
+def setup_db():
+    """Очищаем БД перед каждым тестом"""
+    db = SessionLocal()
+    db.query(models.Like).delete()
+    db.query(models.Follow).delete()
+    db.query(models.Media).delete()
+    db.query(models.Tweet).delete()
+    db.query(models.User).delete()
+
+    # создаём пользователей
+    alice = models.User(name="Alice", api_key="key-alice")
+    bob = models.User(name="Bob", api_key="key-bob")
+    carol = models.User(name="Carol", api_key="key-carol")
+    db.add_all([alice, bob, carol])
+    db.commit()
+    yield
+    db.close()
 
 
 def test_create_tweet_and_like_flow():
@@ -22,20 +43,34 @@ def test_create_tweet_and_like_flow():
     # Лайк от автора
     r = client.post(f"/api/tweets/{tid}/likes", headers=HEADERS)
     assert r.status_code == 200
+    assert r.json()["name"] == "Alice"
 
     # Лента (никого не фоловлю — пусто)
     r = client.get("/api/tweets", headers=HEADERS)
     assert r.status_code == 200
     assert r.json()["tweets"] == []
 
-    # Теперь подпишусь на себя (искусственно)
-    client.post(f"/api/users/{1}/follow", headers=HEADERS)
+    # Подписаться на Alice от Bob
+    db = SessionLocal()
+    alice = db.query(models.User).filter_by(name="Alice").first()
+    bob = db.query(models.User).filter_by(name="Bob").first()
+    follow = models.Follow(follower_id=bob.id, followee_id=alice.id)
+    db.add(follow)
+    db.commit()
+    db.close()
 
-    # Лента снова
-    r = client.get("/api/tweets", headers=HEADERS)
+    # Теперь Bob видит твит Alice
+    r = client.get("/api/tweets", headers={"X-API-Key": "key-bob"})
     assert r.status_code == 200
-    data = r.json()
-    assert len(data["tweets"]) == 1
-    tweet = data["tweets"][0]
-    assert tweet["content"] == "Hello"
-    assert tweet["likes"][0]["user_id"] == 1
+    tweets = r.json()["tweets"]
+    assert len(tweets) == 1
+    assert tweets[0]["content"] == "Hello"
+    assert tweets[0]["likes"][0]["name"] == "Alice"
+
+
+def test_me_endpoint():
+    r = client.get("/api/users/me", headers=HEADERS)
+    assert r.status_code == 200
+    me = r.json()
+    assert me["name"] == "Alice"
+    assert me["api_key"] == "key-alice"
