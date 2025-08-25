@@ -94,7 +94,7 @@ def get_feed(
                 created_at=t.created_at,
                 author={"id": t.author.id, "name": t.author.name},
                 attachments=[m.url for m in t.medias],
-                likes=[{"user_id": l.user.id, "name": l.user.name} for l in t.likes],
+                likes=[{"user_id": like.user.id, "name": like.user.name} for like in t.likes],
             )
         )
 

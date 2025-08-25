@@ -6,7 +6,6 @@ from typing import List
 from sqlalchemy import (
     String,
     Text,
-    Integer,
     ForeignKey,
     DateTime,
     UniqueConstraint,
