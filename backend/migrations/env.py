@@ -17,7 +17,6 @@ sys.path.append(BACKEND_DIR)
 # Импорты проекта
 # -----------------------------
 import app.models as models  # noqa
-from app.database import engine as app_engine  # твой движок
 
 # -----------------------------
 # Alembic конфиг
