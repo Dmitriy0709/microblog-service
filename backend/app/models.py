@@ -1,79 +1,66 @@
 from datetime import datetime
-from typing import List, Optional
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, func
+from sqlalchemy.orm import relationship, declarative_base
 
-from sqlalchemy import String, Text, ForeignKey, DateTime, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-
-
-class Base(DeclarativeBase):
-    pass
+Base = declarative_base()
 
 
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-    api_key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    api_key = Column(String, unique=True, nullable=False)
 
-    tweets: Mapped[List["Tweet"]] = relationship(back_populates="author")
-    likes: Mapped[List["Like"]] = relationship(back_populates="user")
-    followers: Mapped[List["Follow"]] = relationship(
-        foreign_keys="Follow.followee_id", back_populates="followee"
-    )
-    following: Mapped[List["Follow"]] = relationship(
-        foreign_keys="Follow.follower_id", back_populates="follower"
-    )
+    tweets = relationship("Tweet", back_populates="author")
+    likes = relationship("Like", back_populates="user")
+    following = relationship("Follow", foreign_keys="Follow.follower_id", back_populates="follower")
+    followers = relationship("Follow", foreign_keys="Follow.following_id", back_populates="following")
 
 
 class Tweet(Base):
     __tablename__ = "tweets"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())  # ✅ фикс
 
-    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    author: Mapped["User"] = relationship(back_populates="tweets")
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    author = relationship("User", back_populates="tweets")
 
-    likes: Mapped[List["Like"]] = relationship(back_populates="tweet")
-    medias: Mapped[List["Media"]] = relationship(back_populates="tweet")
+    likes = relationship("Like", back_populates="tweet")
+    medias = relationship("Media", back_populates="tweet")
 
 
 class Media(Base):
     __tablename__ = "medias"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    url: Mapped[str] = mapped_column(String, nullable=False)
+    id = Column(Integer, primary_key=True, index=True)
+    url = Column(String, nullable=False)
 
-    tweet_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tweets.id"))
-    tweet: Mapped[Optional["Tweet"]] = relationship(back_populates="medias")
+    tweet_id = Column(Integer, ForeignKey("tweets.id"))
+    tweet = relationship("Tweet", back_populates="medias")
 
 
 class Like(Base):
     __tablename__ = "likes"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
 
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    tweet_id: Mapped[int] = mapped_column(ForeignKey("tweets.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    tweet_id = Column(Integer, ForeignKey("tweets.id"), nullable=False)
 
-    user: Mapped["User"] = relationship(back_populates="likes")
-    tweet: Mapped["Tweet"] = relationship(back_populates="likes")
+    user = relationship("User", back_populates="likes")
+    tweet = relationship("Tweet", back_populates="likes")
 
 
 class Follow(Base):
     __tablename__ = "follows"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    follower_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    followee_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    id = Column(Integer, primary_key=True, index=True)
 
-    follower: Mapped["User"] = relationship(
-        foreign_keys=[follower_id], back_populates="following"
-    )
-    followee: Mapped["User"] = relationship(
-        foreign_keys=[followee_id], back_populates="followers"
-    )
+    follower_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    following_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    follower = relationship("User", foreign_keys=[follower_id], back_populates="following")
+    following = relationship("User", foreign_keys=[following_id], back_populates="followers")

@@ -1,60 +1,40 @@
-from __future__ import annotations
+from logging.config import fileConfig
+from sqlalchemy import engine_from_config, pool
+from alembic import context
 
 import os
 import sys
-from logging.config import fileConfig
-from sqlalchemy import create_engine
-from alembic import context
+# Добавляем путь к твоему backend/app
+# Берём абсолютный путь до backend
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+APP_DIR = os.path.join(BASE_DIR, "app")
 
-# -----------------------------
-# Пути
-# -----------------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/migrations/
-BACKEND_DIR = os.path.dirname(BASE_DIR)                # backend/
-sys.path.append(BACKEND_DIR)
+if APP_DIR not in sys.path:
+    sys.path.insert(0, APP_DIR)
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
-# -----------------------------
-# Импорты проекта
-# -----------------------------
-import app.models as models  # noqa
+from app.database import engine
+import app.models as models
 
-# -----------------------------
-# Alembic конфиг
-# -----------------------------
 config = context.config
+fileConfig(config.config_file_name)
 
-# URL берём из переменной окружения DATABASE_URL или дефолт
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dev.db")
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
-
-# Логирование
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
-
-# Метаданные из моделей
 target_metadata = models.Base.metadata
 
 
-# -----------------------------
-# Режимы: offline / online
-# -----------------------------
-def run_migrations_offline() -> None:
-    """Запуск миграций в offline режиме (генерим SQL)."""
-    url = config.get_main_option("sqlalchemy.url")
+def run_migrations_offline():
+    url = os.getenv("DATABASE_URL")
     context.configure(
-        url=url,
-        target_metadata=target_metadata,
-        literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
+        url=url, target_metadata=target_metadata, literal_binds=True, dialect_opts={"paramstyle": "named"}
     )
 
     with context.begin_transaction():
         context.run_migrations()
 
 
-def run_migrations_online() -> None:
-    """Запуск миграций в online режиме (подключение к БД)."""
-    connectable = create_engine(DATABASE_URL)
+def run_migrations_online():
+    connectable = engine
 
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
