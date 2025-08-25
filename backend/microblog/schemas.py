@@ -1,5 +1,5 @@
-from datetime import datetime
 from typing import List
+from datetime import datetime
 from pydantic import BaseModel
 
 
@@ -11,14 +11,11 @@ class UserBase(BaseModel):
         orm_mode = True
 
 
-class TweetCreate(BaseModel):
-    tweet_data: str
-    tweet_media_ids: List[int] = []
-
-
-class MediaOut(BaseModel):
+class TweetBase(BaseModel):
     id: int
-    url: str
+    content: str
+    created_at: datetime
+    author: UserBase
 
     class Config:
         orm_mode = True
@@ -34,11 +31,16 @@ class TweetOut(BaseModel):
     content: str
     created_at: datetime
     author: UserBase
-    attachments: List[MediaOut] = []
+    attachments: List[str] = []
     likes: List[LikeResponse] = []
 
     class Config:
         orm_mode = True
+
+
+class TweetCreate(BaseModel):
+    tweet_data: str
+    tweet_media_ids: List[int] = []
 
 
 class FeedResponse(BaseModel):
