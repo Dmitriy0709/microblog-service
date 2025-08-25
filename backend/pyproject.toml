@@ -1,0 +1,14 @@
+[tool.ruff]
+line-length = 120
+extend-ignore = [
+    "B008",  # Разрешить Depends/File в параметрах функций
+]
+
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+plugins = ["sqlalchemy.ext.mypy.plugin"]

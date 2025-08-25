@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+
+# Env & local
+.env
+.dev.env
+*.db
+
+# IDE
+.vscode/
+.idea/
+
+# Media & build
+backend/app/media_storage/*
+!backend/app/media_storage/.gitkeep
+
+# Node/build (если появится)
+node_modules/
