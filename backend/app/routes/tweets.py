@@ -1,9 +1,8 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
-from app import models, schemas
+from app import schemas, models
 from app.database import get_db
 from app.deps import get_current_user
 
@@ -16,24 +15,10 @@ def create_tweet(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    """Создать новый твит"""
-    db_tweet = models.Tweet(
-        content=tweet.tweet_data,
-        author_id=current_user.id,
-    )
+    db_tweet = models.Tweet(content=tweet.tweet_data, author=current_user)
     db.add(db_tweet)
     db.commit()
     db.refresh(db_tweet)
-
-    if tweet.tweet_media_ids:
-        medias = (
-            db.query(models.Media)
-            .filter(models.Media.id.in_(tweet.tweet_media_ids))
-            .all()
-        )
-        db_tweet.medias.extend(medias)
-        db.commit()
-
     return {"tweet_id": db_tweet.id}
 
 
@@ -43,23 +28,16 @@ def like_tweet(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    """Поставить лайк на твит"""
-    tweet = db.query(models.Tweet).filter(models.Tweet.id == tweet_id).first()
+    tweet = db.get(models.Tweet, tweet_id)
     if not tweet:
         raise HTTPException(status_code=404, detail="Tweet not found")
 
-    like = (
-        db.query(models.Like)
-        .filter(models.Like.tweet_id == tweet_id, models.Like.user_id == current_user.id)
-        .first()
-    )
-    if like:
-        return {"user_id": current_user.id, "name": current_user.name}
-
-    like = models.Like(user_id=current_user.id, tweet_id=tweet_id)
+    like = models.Like(user=current_user, tweet=tweet)
     db.add(like)
     db.commit()
-    return {"user_id": current_user.id, "name": current_user.name}
+    db.refresh(like)
+
+    return schemas.LikeResponse(user_id=current_user.id, name=current_user.name)
 
 
 @router.get("", response_model=schemas.FeedResponse)
@@ -67,35 +45,22 @@ def get_feed(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    """Получить ленту текущего пользователя"""
-    followees = (
-        db.query(models.Follow.followee_id)
-        .filter(models.Follow.follower_id == current_user.id)
-        .all()
-    )
-    followee_ids = [f[0] for f in followees]
+    stmt = select(models.Tweet).where(models.Tweet.author_id != current_user.id)
+    tweets = db.scalars(stmt).all()
 
-    if not followee_ids:
-        return {"tweets": []}
-
-    tweets = (
-        db.query(models.Tweet)
-        .filter(models.Tweet.author_id.in_(followee_ids))
-        .order_by(models.Tweet.created_at.desc())
-        .all()
-    )
-
-    feed: List[schemas.TweetOut] = []
-    for t in tweets:
-        feed.append(
+    return schemas.FeedResponse(
+        tweets=[
             schemas.TweetOut(
                 id=t.id,
                 content=t.content,
                 created_at=t.created_at,
-                author={"id": t.author.id, "name": t.author.name},
+                author=schemas.UserBase(id=t.author.id, name=t.author.name),
                 attachments=[m.url for m in t.medias],
-                likes=[{"user_id": like.user.id, "name": like.user.name} for like in t.likes],
+                likes=[
+                    schemas.LikeResponse(user_id=l.user.id, name=l.user.name)
+                    for l in t.likes
+                ],
             )
-        )
-
-    return {"tweets": feed}
+            for t in tweets
+        ]
+    )

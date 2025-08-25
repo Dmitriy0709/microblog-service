@@ -3,7 +3,9 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-# ===== USERS =====
+# ---------------------------
+# Users
+# ---------------------------
 class UserBase(BaseModel):
     id: int
     name: str
@@ -12,16 +14,13 @@ class UserBase(BaseModel):
         orm_mode = True
 
 
-class UserMeResponse(BaseModel):
-    id: int
-    name: str
+class UserMeResponse(UserBase):
     api_key: str
 
-    class Config:
-        orm_mode = True
 
-
-# ===== TWEETS =====
+# ---------------------------
+# Tweets
+# ---------------------------
 class TweetCreate(BaseModel):
     tweet_data: str
     tweet_media_ids: List[int] = []
@@ -35,6 +34,9 @@ class LikeResponse(BaseModel):
     user_id: int
     name: str
 
+    class Config:
+        orm_mode = True
+
 
 class TweetOut(BaseModel):
     id: int
@@ -44,12 +46,17 @@ class TweetOut(BaseModel):
     attachments: List[str]
     likes: List[LikeResponse]
 
+    class Config:
+        orm_mode = True
+
 
 class FeedResponse(BaseModel):
     tweets: List[TweetOut]
 
 
-# ===== MEDIAS =====
+# ---------------------------
+# Medias
+# ---------------------------
 class MediaCreated(BaseModel):
     media_id: int
     url: str
