@@ -46,7 +46,12 @@ class Tweet(Base):
 
     id = Column(Integer, primary_key=True)
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime(timezone=False), nullable=False, server_default=func.current_timestamp(), default=datetime.utcnow)
+    created_at = Column(
+        DateTime(timezone=False),
+        nullable=False,
+        server_default=func.current_timestamp(),
+        default=datetime.utcnow,
+    )
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     author: User  # type: ignore

@@ -3,28 +3,30 @@ import os
 
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
+from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 # Добавляем путь к backend для импорта app
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
 
 from app.models import Base  # noqa: E402
-from app.database import DATABASE_URL  # если есть настройка URL базы
 
-# Этот объект содержит конфигурацию alembic.ini
+# Конфигурация Alembic
 config = context.config
 
-# Читаем файл конфигурации логгирования alembic.ini
+# Настройка логгирования
 fileConfig(config.config_file_name)
 
-# metadata для auto генерации миграций
+# Получаем URL базы из env или alembic.ini
+database_url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
+
 target_metadata = Base.metadata
 
+
 def run_migrations_offline():
-    url = config.get_main_option("sqlalchemy.url") or DATABASE_URL
+    url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -35,6 +37,7 @@ def run_migrations_offline():
     with context.begin_transaction():
         context.run_migrations()
 
+
 def run_migrations_online():
     connectable = engine_from_config(
         config.get_section(config.config_ini_section),
@@ -43,13 +46,11 @@ def run_migrations_online():
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()
+
 
 if context.is_offline_mode():
     run_migrations_offline()
