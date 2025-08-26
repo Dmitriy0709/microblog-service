@@ -4,12 +4,9 @@ from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import ForeignKey, Integer, String, Text, DateTime, UniqueConstraint, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import declarative_base, Mapped, mapped_column, relationship
 
-
-class Base(DeclarativeBase):
-    pass
-
+Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
@@ -18,23 +15,28 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     api_key: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
 
-    tweets: Mapped[List[Tweet]] = relationship(
+    # Аннотация отношений через typing.List + игнор для mypy
+    tweets: List["Tweet"]  # type: ignore
+    tweets = relationship(
         "Tweet",
         back_populates="author",
         cascade="all, delete-orphan",
     )
-    likes: Mapped[List[Like]] = relationship(
+    likes: List["Like"]  # type: ignore
+    likes = relationship(
         "Like",
         back_populates="user",
         cascade="all, delete-orphan",
     )
-    following: Mapped[List[Follow]] = relationship(
+    following: List["Follow"]  # type: ignore
+    following = relationship(
         "Follow",
         back_populates="follower",
         foreign_keys="Follow.follower_id",
         cascade="all, delete-orphan",
     )
-    followers: Mapped[List[Follow]] = relationship(
+    followers: List["Follow"]  # type: ignore
+    followers = relationship(
         "Follow",
         back_populates="followee",
         foreign_keys="Follow.followee_id",
@@ -55,14 +57,16 @@ class Tweet(Base):
     )
 
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
-    author: Mapped[User] = relationship("User", back_populates="tweets")
+    author: User = relationship("User", back_populates="tweets")
 
-    likes: Mapped[List[Like]] = relationship(
+    likes: List["Like"]  # type: ignore
+    likes = relationship(
         "Like",
         back_populates="tweet",
         cascade="all, delete-orphan",
     )
-    medias: Mapped[List[Media]] = relationship(
+    medias: List["Media"]  # type: ignore
+    medias = relationship(
         "Media",
         back_populates="tweet",
         cascade="all, delete-orphan",
@@ -76,12 +80,12 @@ class Follow(Base):
     follower_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     followee_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
-    follower: Mapped[User] = relationship(
+    follower: User = relationship(
         "User",
         back_populates="following",
         foreign_keys=[follower_id],
     )
-    followee: Mapped[User] = relationship(
+    followee: User = relationship(
         "User",
         back_populates="followers",
         foreign_keys=[followee_id],
@@ -99,8 +103,8 @@ class Like(Base):
     tweet_id: Mapped[int] = mapped_column(ForeignKey("tweets.id"), nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
-    tweet: Mapped[Tweet] = relationship("Tweet", back_populates="likes")
-    user: Mapped[User] = relationship("User", back_populates="likes")
+    tweet: Tweet = relationship("Tweet", back_populates="likes")
+    user: User = relationship("User", back_populates="likes")
 
     __table_args__ = (
         UniqueConstraint("tweet_id", "user_id", name="uq_tweet_user_like"),
@@ -112,6 +116,6 @@ class Media(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     url: Mapped[str] = mapped_column(String(500), nullable=False)
-    tweet_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tweets.id"), nullable=True)
+    tweet_id: Optional[int] = mapped_column(ForeignKey("tweets.id"), nullable=True)
 
-    tweet: Mapped[Optional[Tweet]] = relationship("Tweet", back_populates="medias")
+    tweet: Optional[Tweet] = relationship("Tweet", back_populates="medias")
