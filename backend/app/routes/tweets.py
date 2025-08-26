@@ -1,4 +1,3 @@
-# backend/app/routes/tweets.py
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -18,8 +17,8 @@ def create_tweet(payload: schemas.TweetCreate, db: Session = Depends(get_db), us
     tweet = models.Tweet(content=payload.tweet_data, author_id=user.id)
     # ensure python-level created_at if DB doesn't set server_default
     if tweet.created_at is None:
-        from datetime import datetime
-        tweet.created_at = datetime.utcnow()
+        from datetime import datetime, timezone
+        tweet.created_at = datetime.now(timezone.utc)  # timezone-aware UTC datetime
 
     db.add(tweet)
     db.commit()
@@ -33,7 +32,11 @@ def create_tweet(payload: schemas.TweetCreate, db: Session = Depends(get_db), us
             db.add(m)
         db.commit()
 
-    return {"tweet_id": tweet.id}
+    return {
+        "tweet_id": tweet.id,
+        "tweet_data": tweet.content,
+        "tweet_media_ids": [m.id for m in tweet.medias] if tweet.medias else []
+    }
 
 
 @router.post("/{tweet_id}/likes", response_model=schemas.Result)
@@ -60,8 +63,8 @@ def unlike_tweet(tweet_id: int, db: Session = Depends(get_db), user: models.User
 
 @router.get("", response_model=schemas.TweetsResponse)
 def get_feed(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
-    # feed: tweets by users current user follows
-    following_ids = [f.followee_id for f in user.following]
+    # feed: tweets by users current user follows plus self
+    following_ids = [f.followee_id for f in user.following] + [user.id]
     if not following_ids:
         return {"tweets": []}
 
