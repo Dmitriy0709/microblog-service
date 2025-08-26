@@ -1,7 +1,28 @@
+import pytest
 from fastapi.testclient import TestClient
 from app.main import app
+from app.database import SessionLocal, Base, engine
+from app import models
 
 client = TestClient(app)
+
+
+# Перед тестами чистим БД и создаём пользователя с api_key
+@pytest.fixture(autouse=True, scope="module")
+def setup_db():
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    user = models.User(name="TestUser", api_key="test_api_key")
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    db.close()
+    yield
+    Base.metadata.drop_all(bind=engine)
+
+
+HEADERS = {"X-API-Key": "test_api_key"}
 
 
 def test_create_tweet_and_like_flow():
@@ -9,30 +30,29 @@ def test_create_tweet_and_like_flow():
     r = client.post(
         "/api/tweets",
         json={"tweet_data": "Hello", "tweet_media_ids": []},
+        headers=HEADERS,
     )
     assert r.status_code == 200, r.text
     tweet = r.json()
-    assert tweet["content"] == "Hello"
-    assert "id" in tweet
+    assert tweet["tweet_data"] == "Hello"
 
     tweet_id = tweet["id"]
 
-    # Поставить лайк
-    r2 = client.post(f"/api/tweets/{tweet_id}/likes")
-    assert r2.status_code == 200, r2.text
-    like = r2.json()
-    assert "user_id" in like
-    assert "name" in like
+    # Лайкнуть твит
+    r = client.post(f"/api/tweets/{tweet_id}/likes", headers=HEADERS)
+    assert r.status_code == 200, r.text
+    like = r.json()
+    assert like["tweet_id"] == tweet_id
 
-    # Проверка, что повторный лайк возвращает того же пользователя
-    r3 = client.post(f"/api/tweets/{tweet_id}/likes")
-    assert r3.status_code == 200
-    like2 = r3.json()
-    assert like2["user_id"] == like["user_id"]
-
-
-def test_list_users():
-    r = client.get("/api/users")
+    # Проверить список твитов
+    r = client.get("/api/tweets", headers=HEADERS)
     assert r.status_code == 200
-    users = r.json()
-    assert isinstance(users, list)
+    tweets = r.json()
+    assert len(tweets) == 1
+    assert tweets[0]["id"] == tweet_id
+
+    # Проверить список лайков
+    r = client.get(f"/api/tweets/{tweet_id}/likes", headers=HEADERS)
+    assert r.status_code == 200
+    likes = r.json()
+    assert len(likes) == 1
