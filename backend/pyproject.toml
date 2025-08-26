@@ -1,9 +1,10 @@
 [tool.ruff]
 line-length = 120
+
+[tool.ruff.lint]
 extend-ignore = [
     "B008",  # Разрешить Depends/File в параметрах функций
 ]
-
 
 [tool.mypy]
 python_version = "3.12"
