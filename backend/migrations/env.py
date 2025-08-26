@@ -1,3 +1,6 @@
+import sys
+import os
+
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -5,16 +8,19 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# Импорт вашего Base из моделей
-from app.models import Base
-from app.database import DATABASE_URL  # если есть
+# Добавляем путь к backend для импорта app
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
 
-# Конфиг Alembic
+from app.models import Base  # noqa: E402
+from app.database import DATABASE_URL  # если есть настройка URL базы
+
+# Этот объект содержит конфигурацию alembic.ini
 config = context.config
 
-# Настройка логгирования
+# Читаем файл конфигурации логгирования alembic.ini
 fileConfig(config.config_file_name)
 
+# metadata для auto генерации миграций
 target_metadata = Base.metadata
 
 def run_migrations_offline():
