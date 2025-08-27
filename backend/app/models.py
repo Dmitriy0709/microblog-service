@@ -101,3 +101,4 @@ class Media(Base):
 
     tweet: Optional[Tweet]  # type: ignore
     tweet = relationship("Tweet", back_populates="medias")
+
