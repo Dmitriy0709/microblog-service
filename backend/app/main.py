@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
-from sqlalchemy import MetaData
 
 from .database import engine
 from .models import Base
 from .routes import tweets, medias, users
 
 # ensure tables exist for tests/local run (Alembic recommended for production)
-metadata: MetaData = Base.metadata
-metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Microblog")
 
