@@ -7,7 +7,7 @@ from .models import Base
 from .routes import tweets, medias, users
 
 # ensure tables exist for tests/local run (Alembic recommended for production)
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)  # type: ignore[attr-defined]
 
 app = FastAPI(title="Microblog")
 
