@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import os
 from pathlib import Path
-from typing import Optional
 
 
 def hash_password(password: str) -> str:
@@ -23,10 +22,7 @@ def generate_api_key() -> str:
 
 def get_media_path() -> Path:
     """Возвращает путь к директории для медиа файлов."""
-    media_dir: Optional[str] = os.getenv("MEDIA_DIR")
-    if media_dir is None:
-        media_dir = "media"
-
+    media_dir = os.getenv("MEDIA_DIR", "media")
     media_path = Path(media_dir)
     media_path.mkdir(exist_ok=True)
     return media_path
@@ -45,6 +41,4 @@ def save_uploaded_file(file_content: bytes, filename: str) -> str:
 
 def media_public_url(media_path: str) -> str:
     """Возвращает публичный URL для медиа файла."""
-    # Простая реализация - возвращает путь как есть
-    # В продакшене здесь может быть логика для CDN/статических файлов
     return f"/static/media/{os.path.basename(media_path)}"
