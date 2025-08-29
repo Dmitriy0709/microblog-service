@@ -5,7 +5,7 @@ import os
 from typing import Any, Optional
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, MetaData
 from alembic import context
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -22,7 +22,7 @@ database_url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.u
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
 
-target_metadata: Any = Base.metadata
+target_metadata: MetaData = Base.metadata
 
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
