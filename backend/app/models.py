@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
 
 from sqlalchemy import (
     Column,
@@ -20,22 +19,24 @@ Base = declarative_base()
 
 class User(Base):  # type: ignore[misc,valid-type]
     __tablename__ = "users"
+    __allow_unmapped__ = True
 
     id = Column(Integer, primary_key=True)
     name = Column(String(200), nullable=False)
     api_key = Column(String(200), nullable=False, unique=True)
 
-    tweets: Any = relationship("Tweet", back_populates="author", cascade="all, delete-orphan")
-    likes: Any = relationship("Like", back_populates="user", cascade="all, delete-orphan")
-    following: Any = relationship(
+    tweets = relationship("Tweet", back_populates="author", cascade="all, delete-orphan")  # type: ignore[var-annotated]
+    likes = relationship("Like", back_populates="user", cascade="all, delete-orphan")  # type: ignore[var-annotated]
+    following = relationship(
         "Follow", back_populates="follower", foreign_keys="Follow.follower_id", cascade="all, delete-orphan"
-    )
-    followers: Any = relationship(
+    )  # type: ignore[var-annotated]
+    followers = relationship(
         "Follow", back_populates="followee", foreign_keys="Follow.followee_id", cascade="all, delete-orphan"
-    )
+    )  # type: ignore[var-annotated]
 
 class Tweet(Base):  # type: ignore[misc,valid-type]
     __tablename__ = "tweets"
+    __allow_unmapped__ = True
 
     id = Column(Integer, primary_key=True)
     content = Column(Text, nullable=False)
@@ -47,39 +48,42 @@ class Tweet(Base):  # type: ignore[misc,valid-type]
     )
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    author: Any = relationship("User", back_populates="tweets")
-    likes: Any = relationship("Like", back_populates="tweet", cascade="all, delete-orphan")
-    medias: Any = relationship("Media", back_populates="tweet", cascade="all, delete-orphan")
+    author = relationship("User", back_populates="tweets")  # type: ignore[var-annotated]
+    likes = relationship("Like", back_populates="tweet", cascade="all, delete-orphan")  # type: ignore[var-annotated]
+    medias = relationship("Media", back_populates="tweet", cascade="all, delete-orphan")  # type: ignore[var-annotated]
 
 class Follow(Base):  # type: ignore[misc,valid-type]
     __tablename__ = "follows"
+    __allow_unmapped__ = True
 
     id = Column(Integer, primary_key=True)
     follower_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     followee_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    follower: Any = relationship("User", back_populates="following", foreign_keys=[follower_id])
-    followee: Any = relationship("User", back_populates="followers", foreign_keys=[followee_id])
+    follower = relationship("User", back_populates="following", foreign_keys=[follower_id])  # type: ignore[var-annotated]
+    followee = relationship("User", back_populates="followers", foreign_keys=[followee_id])  # type: ignore[var-annotated]
 
     __table_args__ = (UniqueConstraint("follower_id", "followee_id", name="uq_follower_followee"),)
 
 class Like(Base):  # type: ignore[misc,valid-type]
     __tablename__ = "likes"
+    __allow_unmapped__ = True
 
     id = Column(Integer, primary_key=True)
     tweet_id = Column(Integer, ForeignKey("tweets.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    tweet: Any = relationship("Tweet", back_populates="likes")
-    user: Any = relationship("User", back_populates="likes")
+    tweet = relationship("Tweet", back_populates="likes")  # type: ignore[var-annotated]
+    user = relationship("User", back_populates="likes")  # type: ignore[var-annotated]
 
     __table_args__ = (UniqueConstraint("tweet_id", "user_id", name="uq_tweet_user_like"),)
 
 class Media(Base):  # type: ignore[misc,valid-type]
     __tablename__ = "medias"
+    __allow_unmapped__ = True
 
     id = Column(Integer, primary_key=True)
     url = Column(String(500), nullable=False)
     tweet_id = Column(Integer, ForeignKey("tweets.id"), nullable=True)
 
-    tweet: Any = relationship("Tweet", back_populates="medias")
+    tweet = relationship("Tweet", back_populates="medias")  # type: ignore[var-annotated]
