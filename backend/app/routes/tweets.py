@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Any
 
 from ..database import get_db
 from ..models import Tweet, Like, User
@@ -33,7 +33,7 @@ def get_tweets(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ) -> TweetsResponse:
-    following_ids = [f.followee_id for f in user.following] + [user.id]
+    following_ids = [f.followee_id for f in user.following] + [user.id]  # type: ignore[attr-defined]
     tweets = (
         db.query(Tweet)
         .filter(Tweet.author_id.in_(following_ids))

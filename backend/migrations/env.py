@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 import os
-from typing import Optional
+from typing import Optional, Any
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
@@ -22,7 +22,7 @@ database_url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.u
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
 
-target_metadata = Base.metadata
+target_metadata: Any = Base.metadata
 
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
