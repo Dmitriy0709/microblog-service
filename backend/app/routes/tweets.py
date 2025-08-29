@@ -6,7 +6,7 @@ from typing import List
 
 from ..database import get_db
 from ..models import Tweet, Like, User
-from ..schemas import TweetOut, TweetCreate, TweetCreated, TweetLike, TweetAuthor, Result
+from ..schemas import TweetOut, TweetCreate, TweetCreated, TweetLike, TweetAuthor, Result, TweetsResponse
 from ..deps import get_current_user
 
 router = APIRouter(prefix="/api/tweets", tags=["tweets"])
@@ -26,13 +26,13 @@ def create_tweet(
     db.refresh(tweet)
     return TweetCreated(tweet_id=int(tweet.id))
 
-@router.get("", response_model=List[TweetOut])
+@router.get("", response_model=TweetsResponse)
 def get_tweets(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
-) -> List[TweetOut]:
+) -> TweetsResponse:
     following_ids = [f.followee_id for f in user.following] + [user.id]
     tweets = (
         db.query(Tweet)
@@ -54,7 +54,7 @@ def get_tweets(
                 attachments=[m.url for m in tw.medias]
             )
         )
-    return result
+    return TweetsResponse(tweets=result)
 
 @router.post("/{tweet_id}/likes", response_model=Result)
 def like_tweet(
