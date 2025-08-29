@@ -1,19 +1,21 @@
-# backend/app/deps.py
 from __future__ import annotations
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import HTTPException, Header
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from . import models
-
-API_KEY_HEADER = "X-API-Key"
+from .models import User
 
 
-def get_current_user(api_key: str = Header(..., alias=API_KEY_HEADER), db: Session = Depends(get_db)) -> models.User:
-    if not api_key:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing API key")
-    user = db.query(models.User).filter(models.User.api_key == api_key).first()
+def get_current_user(x_api_key: str = Header(...), db: Session = next(get_db())) -> User:
+    """
+    Dependency to get current user by API key from header.
+    """
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="API key required")
+
+    user = db.query(User).filter(User.api_key == x_api_key).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid api key")
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
     return user

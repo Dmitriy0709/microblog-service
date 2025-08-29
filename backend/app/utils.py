@@ -1,39 +1,50 @@
-# backend/app/utils.py
 from __future__ import annotations
 
+import hashlib
+import os
 from pathlib import Path
-from fastapi import UploadFile
-import uuid
-
-MEDIA_ROOT = Path(__file__).parent.parent / "media_storage"
-MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+from typing import Optional
 
 
-def save_upload(file: UploadFile | None) -> str:
-    """
-    Save UploadFile and return relative public path.
-    If file is None or empty, raise ValueError.
-    """
-    if file is None:
-        raise ValueError("No file provided")
-    # If UploadFile already had .file consumed, ensure we read from .file
-    try:
-        content = file.file.read()
-    except Exception:
-        # might be async UploadFile; try to read .filename only
-        raise
-    ext = Path(file.filename).suffix or ""
-    name = f"{uuid.uuid4().hex}{ext}"
-    dest = MEDIA_ROOT / name
-    dest.write_bytes(content)
-    return f"/media/{name}"
+def hash_password(password: str) -> str:
+    """Хеширует пароль используя SHA-256."""
+    return hashlib.sha256(password.encode()).hexdigest()
 
 
-# compatibility alias (some places used save_upload_file)
-def save_upload_file(file: UploadFile) -> str:
-    return save_upload(file)
+def verify_password(password: str, hashed_password: str) -> bool:
+    """Проверяет пароль против хеша."""
+    return hash_password(password) == hashed_password
 
 
-def media_public_url(stored_url: str) -> str:
-    # stored_url is already a public path (/media/...) in our simple setup
-    return stored_url
+def generate_api_key() -> str:
+    """Генерирует случайный API ключ."""
+    return hashlib.sha256(os.urandom(32)).hexdigest()
+
+
+def get_media_path() -> Path:
+    """Возвращает путь к директории для медиа файлов."""
+    media_dir: Optional[str] = os.getenv("MEDIA_DIR")
+    if media_dir is None:
+        media_dir = "media"
+
+    media_path = Path(media_dir)
+    media_path.mkdir(exist_ok=True)
+    return media_path
+
+
+def save_uploaded_file(file_content: bytes, filename: str) -> str:
+    """Сохраняет загруженный файл и возвращает его путь."""
+    media_path = get_media_path()
+    file_path = media_path / filename
+
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+
+    return str(file_path)
+
+
+def media_public_url(media_path: str) -> str:
+    """Возвращает публичный URL для медиа файла."""
+    # Простая реализация - возвращает путь как есть
+    # В продакшене здесь может быть логика для CDN/статических файлов
+    return f"/static/media/{os.path.basename(media_path)}"
