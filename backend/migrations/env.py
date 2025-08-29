@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 import os
-from typing import Any, Optional
+from typing import Optional
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool, MetaData
