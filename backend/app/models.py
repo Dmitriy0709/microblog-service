@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, List
+from typing import Any
 
 from sqlalchemy import (
     Column,
@@ -16,9 +16,6 @@ from sqlalchemy import (
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
-if TYPE_CHECKING:
-    from sqlalchemy.orm import RelationshipProperty
-
 Base = declarative_base()
 
 class User(Base):  # type: ignore[misc]
@@ -28,14 +25,14 @@ class User(Base):  # type: ignore[misc]
     name = Column(String(200), nullable=False)
     api_key = Column(String(200), nullable=False, unique=True)
 
-    tweets: RelationshipProperty[List[Tweet]] = relationship("Tweet", back_populates="author", cascade="all, delete-orphan")  # type: ignore[assignment]
-    likes: RelationshipProperty[List[Like]] = relationship("Like", back_populates="user", cascade="all, delete-orphan")  # type: ignore[assignment]
-    following: RelationshipProperty[List[Follow]] = relationship(
+    tweets: Any = relationship("Tweet", back_populates="author", cascade="all, delete-orphan")
+    likes: Any = relationship("Like", back_populates="user", cascade="all, delete-orphan")
+    following: Any = relationship(
         "Follow", back_populates="follower", foreign_keys="Follow.follower_id", cascade="all, delete-orphan"
-    )  # type: ignore[assignment]
-    followers: RelationshipProperty[List[Follow]] = relationship(
+    )
+    followers: Any = relationship(
         "Follow", back_populates="followee", foreign_keys="Follow.followee_id", cascade="all, delete-orphan"
-    )  # type: ignore[assignment]
+    )
 
 class Tweet(Base):  # type: ignore[misc]
     __tablename__ = "tweets"
@@ -45,9 +42,9 @@ class Tweet(Base):  # type: ignore[misc]
     created_at = Column(DateTime(timezone=False), nullable=False, server_default=func.current_timestamp(), default=datetime.utcnow)
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    author: RelationshipProperty[User] = relationship("User", back_populates="tweets")  # type: ignore[assignment]
-    likes: RelationshipProperty[List[Like]] = relationship("Like", back_populates="tweet", cascade="all, delete-orphan")  # type: ignore[assignment]
-    medias: RelationshipProperty[List[Media]] = relationship("Media", back_populates="tweet", cascade="all, delete-orphan")  # type: ignore[assignment]
+    author: Any = relationship("User", back_populates="tweets")
+    likes: Any = relationship("Like", back_populates="tweet", cascade="all, delete-orphan")
+    medias: Any = relationship("Media", back_populates="tweet", cascade="all, delete-orphan")
 
 class Follow(Base):  # type: ignore[misc]
     __tablename__ = "follows"
@@ -56,8 +53,8 @@ class Follow(Base):  # type: ignore[misc]
     follower_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     followee_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    follower: RelationshipProperty[User] = relationship("User", back_populates="following", foreign_keys=[follower_id])  # type: ignore[assignment]
-    followee: RelationshipProperty[User] = relationship("User", back_populates="followers", foreign_keys=[followee_id])  # type: ignore[assignment]
+    follower: Any = relationship("User", back_populates="following", foreign_keys=[follower_id])
+    followee: Any = relationship("User", back_populates="followers", foreign_keys=[followee_id])
 
     __table_args__ = (UniqueConstraint("follower_id", "followee_id", name="uq_follower_followee"),)
 
@@ -68,8 +65,8 @@ class Like(Base):  # type: ignore[misc]
     tweet_id = Column(Integer, ForeignKey("tweets.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    tweet: RelationshipProperty[Tweet] = relationship("Tweet", back_populates="likes")  # type: ignore[assignment]
-    user: RelationshipProperty[User] = relationship("User", back_populates="likes")  # type: ignore[assignment]
+    tweet: Any = relationship("Tweet", back_populates="likes")
+    user: Any = relationship("User", back_populates="likes")
 
     __table_args__ = (UniqueConstraint("tweet_id", "user_id", name="uq_tweet_user_like"),)
 
@@ -80,4 +77,4 @@ class Media(Base):  # type: ignore[misc]
     url = Column(String(500), nullable=False)
     tweet_id = Column(Integer, ForeignKey("tweets.id"), nullable=True)
 
-    tweet: RelationshipProperty[Tweet] = relationship("Tweet", back_populates="medias")  # type: ignore[assignment]
+    tweet: Any = relationship("Tweet", back_populates="medias")
